@@ -1,3 +1,13 @@
+import logging
+
+
+LOGGER_FORMATER = logging.Formatter('[%(asctime)-5s] %(threadName)s - %(levelname)s - %(message)s')
+
+_logger = logging.getLogger("Wallet")
+__sh = logging.StreamHandler()
+__sh.setFormatter(LOGGER_FORMATER)
+_logger.addHandler(__sh)
+
 class amount:
 
     total: float
@@ -16,7 +26,7 @@ class amount:
         return self
 
     def __str__(self) -> str:
-        return f"{self.asset_id} : {self.total}"
+        return f'{self.asset_id} : {self.total}'
 
 class InsufficientFundsError(Exception):
 
@@ -30,10 +40,10 @@ class InsufficientFundsError(Exception):
         self.available_total = available.total
         self.expected_total = expected.total
         self.difference = self.available_total - self.expected_total
-        super().__init__(f"The wallet does not have "
-                         f"{self.expected_total} units of asset {self.asset_id}, "
-                         f"it contains {self.available_total}")
-
+        super().__init__(f'The wallet does not have '
+                         f'{self.expected_total} units of asset {self.asset_id}, '
+                         f'it contains {self.available_total}')
+ 
 class wallet:
 
     content: dict
@@ -44,9 +54,11 @@ class wallet:
         self.id = id
 
     def add(self, _amount: amount) -> None:
+        if  _amount.total < 0: _logger.warning('Using negative numbers in add operation may lead to unexpected behaviours.')
         self.content[_amount.asset_id] = self.get(_amount.asset_id) + _amount.total
 
     def sub(self, _amount: amount) -> None:
+        if  _amount.total < 0: _logger.warning('Using negative numbers in sub operation may lead to unexpected behaviours.')
         if not self.contains(_amount):
             raise InsufficientFundsError(self.get(_amount.asset_id), _amount)
         self.content[_amount.asset_id] -= _amount.total
@@ -68,5 +80,12 @@ class wallet:
 
     def __str__(self) -> str:
         amount_str_list = [str(_amount) for _amount in self.content.values()]
-        amount_descriptions = ", ".join(amount_str_list)
-        return f"Wallet {self.id}[{amount_descriptions}]"
+        amount_descriptions = ','.join(amount_str_list)
+        return f'Wallet {self.id}[{amount_descriptions}]'
+
+w = wallet(1)
+w.add(amount(1, 10))
+w.add(amount(1, 20))
+w.sub(amount(1, 20))
+print(w.contains(amount(1, 5)))
+print(w)

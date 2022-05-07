@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 
 
@@ -53,11 +54,15 @@ class wallet:
         self.content = {}
         self.id = id
 
-    def add(self, _amount: amount) -> None:
+    def __add__(self, _amount: amount) -> None:
+        if not isinstance(_amount, (amount,)): 
+            raise TypeError(f'Can\'t add {_amount.__class__.__name__}, it must be an amount')
         if  _amount.total < 0: _logger.warning('Using negative numbers in add operation may lead to unexpected behaviours.')
         self.content[_amount.asset_id] = self.get(_amount.asset_id) + _amount.total
 
-    def sub(self, _amount: amount) -> None:
+    def __sub__(self, _amount: amount) -> None:
+        if not isinstance(_amount, (amount,)): 
+            raise TypeError(f'Can\'t sub {_amount.__class__.__name__}, it must be an amount')
         if  _amount.total < 0: _logger.warning('Using negative numbers in sub operation may lead to unexpected behaviours.')
         if not self.contains(_amount):
             raise InsufficientFundsError(self.get(_amount.asset_id), _amount)
@@ -83,9 +88,48 @@ class wallet:
         amount_descriptions = ','.join(amount_str_list)
         return f'Wallet {self.id}[{amount_descriptions}]'
 
-w = wallet(1)
-w.add(amount(1, 10))
-w.add(amount(1, 20))
-w.sub(amount(1, 20))
-print(w.contains(amount(1, 5)))
-print(w)
+class Wallet:
+
+    def __init__(self) -> None:
+        self.__assets = {}
+
+    def __setitem__(self, __k, __v) -> None:
+        if not isinstance(__v, (float, int)):
+            raise TypeError('This wallet only accept floating points or integers')
+        self.__assets[__k] = Asset(__v)
+
+    def __getitem__(self, __k) -> float:
+        return self.__assets.get(__k, 0)
+
+class InsufficientAssetError(Exception):
+
+    def __init__(self, available: float, expected: float) -> None:
+        super().__init__(f'Insufficient funds. {available} < {expected}')
+
+@dataclass(order=True)
+class Asset(float):
+
+    def __init__(self, __v) -> None:
+        if __v < 0:
+            raise ValueError(f"A wallet can't hold negative values")
+        super().__init__()
+
+    def __sub__(self, __x) -> float:
+        if float(self) < __x:
+            raise InsufficientAssetError(self, __x)
+        return super().__sub__(__x)
+
+    def __add__(self, __x) -> float:
+        if __x < 0:
+            return self.__sub__(-__x)
+        return super().__add__(__x)
+
+    def __mul__(self, __x: float) -> float:
+        return Asset(float(self) * __x)
+
+w = Wallet()
+w['BTC'] += 6
+w['BTC'] += -5
+a = w['BTC']
+a *= 5
+print(type(a))
